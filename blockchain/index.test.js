@@ -1,5 +1,5 @@
-const cryptoHash = require('./crypto-hash')
-const Blockchain = require('./Blockchain');
+const cryptoHash = require('../util/crypto-hash')
+const Blockchain = require('.');
 const Block = require('./block');
 
 describe('Blockchain',()=>{
@@ -56,7 +56,7 @@ describe('Blockchain',()=>{
 
             describe('and the chain contains a block with an invalid field',()=>{
                 it('return false',()=>{
-                    console.log(blockchain);
+                    //console.log(blockchain);
                     blockchain.chain[2].data = 'some-bad-and-evil-data';
                     expect(Blockchain.isValidChain(blockchain.chain)).toBe(false);
                 });
