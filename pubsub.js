@@ -1,43 +1,57 @@
-const PubNub = require('pubnub');
+const redis = require('redis');
 
-const credentials = {
-    publishKey:'pub-c-8a035990-d834-48f7-ac01-8f7e4b29439e',
-    subscribeKey:'sub-c-2dfecdef-801a-4f42-b19e-f20e17f55577',
-    secretKey:'sec-c-ZjliMzk0Y2YtYjFmNy00YTRhLTg5ZjItMGVkYzJlN2E2YTVl'
+const CHANNELS = {
+    TEST:'TEST',
+    BLOCKCHAIN:'BLOCKCHAIN'
 }
 
-const CHANNELS ={
-    TEST:'TEST'
-    
-}
+class PubSub{
+    constructor({blockchain}){
 
-class PubSub {
-    constructor(){
-        this.pubnub = new PubNub(credentials);
+        this.blockchain = blockchain;
 
-        this.pubnub.subscribe({channels:Object.values(CHANNELS)});
+        this.publisher = redis.createClient();
+        this.subscriber = redis.createClient();
 
-        this.pubnub.addListener(this.listener());
-
+        this.subscribeToChannels();
+        
+        
+        this.subscriber.on(
+        'message',
+        (channel,message)=> this.handleMessage(channel,message)
+        
+        ); 
     }
-
-
-    listener(){
-        return{
-            message:messageObject=>{
-                const {channel,message} = messageObject;
-                console.log(`Message received.Channel: ${channel}. Message: ${message}`);
-            }
+    handleMessage(channel,message){
+        console.log(`Message received. Channel: ${channel}. Message: ${message}`);
+        const parsedMessage = JSON.parse(message)
+        
+        if(this.channel==CHANNELS.BLOCKCHAIN){
+            this.blockchain.replaceChain(parsedMessage);
         }
     }
-
-    publish({channel,message}) {
-        this.pubnub.publish({channel,message});
+    subscribeToChannels()
+    {
+        Object.values(CHANNELS).forEach((channel)=>{
+            this.subscriber.subscribe(channel);
+        });
+    }
+    
+    publish({channel,message}){
+        this.subscriber.unsubscribe(channel,()=>{
+            this.publisher.publish(channel,message,()=>{
+              this.subscriber.subscribe(channel);  
+            });
+        });
+       
     }
 
-} 
+    broadcastChain(){
+        this.publish({
+            channel:CHANNELS.BLOCKCHAIN,
+            message: JSON.stringify(this.blockchain.chain) 
+        });
+    }
+}
 
-const testPubSub = new PubSub();
-testPubSub.publish({channel:CHANNELS.TEST,message:'hello pubnub'})
-
-module.exports = PubSub;
+module.exports =PubSub;
